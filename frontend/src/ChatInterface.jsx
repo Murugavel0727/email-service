@@ -88,7 +88,7 @@ function ChatInterface() {
 
     // Check backend connection on mount
     useEffect(() => {
-    checkConnection();
+        checkConnection();
     }, []);
 
 
@@ -113,10 +113,13 @@ function ChatInterface() {
     // Check backend connection
     const checkConnection = async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/`, { timeout: 3000 });
+            // Increased timeout to 30s for Render cold starts
+            const response = await axios.get(`${API_BASE_URL}/`, { timeout: 30000 });
             setIsOnline(true);
         } catch (error) {
-            setIsOnline(false);
+            console.warn("Connection check failed:", error);
+            // Don't set isOnline to false immediately, let the user try to send messages
+            // setIsOnline(false); 
         }
     };
 
@@ -164,16 +167,16 @@ function ChatInterface() {
 
     // Update settings
     const updateSettings = (newSettings) => {
-    const { backendUrl, ...safeSettings } = newSettings; // 🚫 remove backendUrl
-    setSettings(safeSettings);
-    localStorage.setItem(
-        'email_agent_settings',
-        JSON.stringify(safeSettings)
-    );
+        const { backendUrl, ...safeSettings } = newSettings; // 🚫 remove backendUrl
+        setSettings(safeSettings);
+        localStorage.setItem(
+            'email_agent_settings',
+            JSON.stringify(safeSettings)
+        );
     };
 
     useEffect(() => {
-    localStorage.removeItem("email_agent_settings");
+        localStorage.removeItem("email_agent_settings");
     }, []);
 
     // Clear all conversations
@@ -193,11 +196,13 @@ function ChatInterface() {
     const sendMessage = async (messageText = input) => {
         if (!messageText.trim()) return;
 
-        // Check connection first
+        // REMOVED: isOnline blocking check. Let the request fail naturally if offline.
+        /* 
         if (!isOnline) {
             addToast('error', 'Backend server is not reachable. Please check if it\'s running.');
             return;
         }
+        */
 
         // Create new conversation if needed
         if (!currentConversationId) {

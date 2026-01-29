@@ -20,12 +20,8 @@ app = FastAPI(title="Agentic Email App")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://myemailservice-eight.vercel.app", 
-        "http://localhost:5173", 
-        "http://localhost:5174"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"], # Allow all origins for debugging
+    allow_credentials=False, # Must be False when allow_origins is ["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
