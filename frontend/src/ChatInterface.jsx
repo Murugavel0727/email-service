@@ -73,7 +73,13 @@ function ChatInterface() {
 
         const savedSettings = localStorage.getItem('email_agent_settings');
         if (savedSettings) {
-            setSettings(prev => ({ ...prev, ...JSON.parse(savedSettings) }));
+            const parsed = JSON.parse(savedSettings);
+
+            setSettings(prev => ({
+                ...prev,
+                ...parsed,
+                backendUrl: API_BASE_URL, // 🔥 FORCE ENV BACKEND
+            }));
         }
 
         const savedRecipients = localStorage.getItem('email_agent_recipients');

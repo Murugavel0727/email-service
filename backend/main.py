@@ -20,7 +20,7 @@ app = FastAPI(title="Agentic Email App")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://myemailservice-eight.vercel.app"],  # In production, specify the frontend URL
+    allow_origins=["https://myemailservice-eight.vercel.app","https://*.vercel.app"],  # In production, specify the frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,7 +56,3 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as e:
         print(f"Error in chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
