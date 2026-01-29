@@ -20,7 +20,7 @@ app = FastAPI(title="Agentic Email App")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify the frontend URL
+    allow_origins=["https://myemailservice-eight.vercel.app"],  # In production, specify the frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +38,11 @@ class ChatRequest(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "Agentic Email Backend is running"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest):
