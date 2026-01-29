@@ -27,7 +27,6 @@ function ChatInterface() {
     const [settings, setSettings] = useState({
         userName: 'User',
         userId: 'anonymous',
-        backendUrl: API_BASE_URL,
         fontSize: 'medium',
         useSupabase: false,
     });
@@ -78,7 +77,6 @@ function ChatInterface() {
             setSettings(prev => ({
                 ...prev,
                 ...parsed,
-                backendUrl: API_BASE_URL, // 🔥 FORCE ENV BACKEND
             }));
         }
 
@@ -90,8 +88,9 @@ function ChatInterface() {
 
     // Check backend connection on mount
     useEffect(() => {
-        checkConnection();
-    }, [settings.backendUrl]);
+    checkConnection();
+    }, []);
+
 
     // Auto-save current conversation to localStorage
     useEffect(() => {
@@ -114,7 +113,7 @@ function ChatInterface() {
     // Check backend connection
     const checkConnection = async () => {
         try {
-            const response = await axios.get(`${settings.backendUrl}/`, { timeout: 3000 });
+            const response = await axios.get(`${API_BASE_URL}/`, { timeout: 3000 });
             setIsOnline(true);
         } catch (error) {
             setIsOnline(false);
@@ -165,9 +164,17 @@ function ChatInterface() {
 
     // Update settings
     const updateSettings = (newSettings) => {
-        setSettings(newSettings);
-        localStorage.setItem('email_agent_settings', JSON.stringify(newSettings));
+    const { backendUrl, ...safeSettings } = newSettings; // 🚫 remove backendUrl
+    setSettings(safeSettings);
+    localStorage.setItem(
+        'email_agent_settings',
+        JSON.stringify(safeSettings)
+    );
     };
+
+    useEffect(() => {
+    localStorage.removeItem("email_agent_settings");
+    }, []);
 
     // Clear all conversations
     const clearAllConversations = () => {
@@ -204,7 +211,7 @@ function ChatInterface() {
 
         try {
             const response = await axios.post(
-                `${settings.backendUrl}/api/chat`,
+                `${API_BASE_URL}/api/chat`,
                 {
                     message: userMessage.content,
                     history: messages,
