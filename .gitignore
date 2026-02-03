@@ -39,6 +39,7 @@ yarn-error.log*
 # Sensitive files
 credentials.json
 token.json
+DEPLOYMENT_CREDENTIALS.md
 *.pem
 *.key
 

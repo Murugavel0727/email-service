@@ -43,6 +43,27 @@ async def root():
 def health():
     return {"status": "ok"}
 
+@app.get("/api/auth/status")
+def auth_status():
+    """Check if email service is authenticated"""
+    status = email_service.get_auth_status()
+    return status
+
+@app.post("/api/auth/init")
+async def init_auth():
+    """Initialize OAuth flow (local development only)"""
+    try:
+        # This will trigger the OAuth flow if needed
+        service = email_service.authenticate()
+        return {
+            "success": True,
+            "message": "Authentication successful. You can now send emails."
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Authentication failed: {str(e)}"
+        )
 
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest):
