@@ -9,13 +9,28 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+SCOPES = [
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.readonly"  # Needed to read user profile
+]
 
 class EmailService:
-    def __init__(self):
+    def __init__(self, session_id: str = None):
+        self.session_id = session_id
         self.creds = None
         self.service = None
+        self.token_file = self._get_token_file_path()
         self._initialize_credentials()
+    
+    def _get_token_file_path(self) -> str:
+        """Get the token file path for this session"""
+        if self.session_id:
+            # Use session-specific token file
+            os.makedirs("user_tokens", exist_ok=True)
+            return os.path.join("user_tokens", f"token_{self.session_id}.json")
+        else:
+            # Fall back to default token.json for backward compatibility
+            return "token.json"
             
     def _initialize_credentials(self):
         """Initialize credentials from token.json, environment variables, or credentials.json"""
@@ -42,15 +57,15 @@ class EmailService:
             except Exception as e:
                 print(f"EmailService: Error loading from environment: {e}")
         
-        # Option 2: Try to load from token.json (for local development)
-        if os.path.exists("token.json"):
-            print("EmailService: Loading credentials from token.json")
+        # Option 2: Try to load from token file (session-specific or default)
+        if os.path.exists(self.token_file):
+            print(f"EmailService: Loading credentials from {self.token_file}")
             try:
-                self.creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-                print("EmailService: Successfully loaded credentials from token.json")
+                self.creds = Credentials.from_authorized_user_file(self.token_file, SCOPES)
+                print(f"EmailService: Successfully loaded credentials from {self.token_file}")
                 return
             except Exception as e:
-                print(f"EmailService: Error loading token.json: {e}")
+                print(f"EmailService: Error loading {self.token_file}: {e}")
         
         print("EmailService: No valid credentials found. Authentication required.")
             
@@ -66,11 +81,11 @@ class EmailService:
                 self.creds.refresh(Request())
                 print("EmailService: Credentials refreshed successfully")
                 
-                # Save refreshed token if we have a local token.json
-                if os.path.exists("token.json"):
-                    with open("token.json", "w") as token:
+                # Save refreshed token to session-specific file
+                if os.path.exists(self.token_file):
+                    with open(self.token_file, "w") as token:
                         token.write(self.creds.to_json())
-                        print("EmailService: Updated token.json with refreshed credentials")
+                        print(f"EmailService: Updated {self.token_file} with refreshed credentials")
             except Exception as e:
                 print(f"EmailService: Error refreshing credentials: {e}")
                 self.creds = None
@@ -91,9 +106,9 @@ class EmailService:
             self.creds = flow.run_local_server(port=0)
             
             # Save the credentials for the next run
-            with open("token.json", "w") as token:
+            with open(self.token_file, "w") as token:
                 token.write(self.creds.to_json())
-            print("EmailService: OAuth flow completed, token.json saved")
+            print(f"EmailService: OAuth flow completed, {self.token_file} saved")
 
         self.service = build("gmail", "v1", credentials=self.creds)
         print("EmailService: Gmail service initialized")
@@ -123,7 +138,7 @@ class EmailService:
             return {
                 "authenticated": False,
                 "message": "No credentials found. Please authenticate.",
-                "has_token_file": os.path.exists("token.json"),
+                "has_token_file": os.path.exists(self.token_file),
                 "has_credentials_file": os.path.exists("credentials.json"),
                 "has_env_vars": bool(os.getenv("GMAIL_REFRESH_TOKEN"))
             }
@@ -175,4 +190,46 @@ class EmailService:
             return None
         except Exception as error:
             print(f"EmailService: Unexpected error occurred: {error}")
+            return None
+    
+    def get_user_email(self) -> str:
+        """Get the email address of the authenticated user"""
+        try:
+            # Load credentials if not already loaded
+            if not self.creds and os.path.exists(self.token_file):
+                self.creds = Credentials.from_authorized_user_file(self.token_file, SCOPES)
+            
+            if not self.creds:
+                print("EmailService: No credentials available to get user email")
+                return None
+            
+            # Try to get email from token data first
+            if os.path.exists(self.token_file):
+                with open(self.token_file, 'r') as f:
+                    token_data = json.load(f)
+                    # Email might be in the account field
+                    if 'account' in token_data and token_data['account']:
+                        return token_data['account']
+            
+            # If not in token, query the Gmail API
+            if not self.service:
+                self.service = build("gmail", "v1", credentials=self.creds)
+            
+            profile = self.service.users().getProfile(userId='me').execute()
+            email = profile.get('emailAddress')
+            
+            # Save email to token file for future use
+            if email and os.path.exists(self.token_file):
+                with open(self.token_file, 'r') as f:
+                    token_data = json.load(f)
+                token_data['account'] = email
+                with open(self.token_file, 'w') as f:
+                    json.dump(token_data, f)
+                print(f"EmailService: Saved user email {email} to token file")
+            
+            return email
+        except Exception as e:
+            print(f"EmailService: Error getting user email: {e}")
+            import traceback
+            traceback.print_exc()
             return None

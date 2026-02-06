@@ -8,7 +8,7 @@ import MarkdownMessage from './components/MarkdownMessage';
 
 import { API_BASE_URL } from './config';
 
-function ChatInterface() {
+function ChatInterface({ sessionId, userEmail, onLogout }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +25,7 @@ function ChatInterface() {
 
     // Settings
     const [settings, setSettings] = useState({
-        userName: 'User',
+        userName: userEmail || 'User',
         userId: 'anonymous',
         fontSize: 'medium',
         useSupabase: false,
@@ -222,7 +222,10 @@ function ChatInterface() {
                     history: messages,
                     recipients: recipients.length > 0 ? recipients : undefined
                 },
-                { timeout: 60000 }
+                {
+                    timeout: 60000,
+                    headers: sessionId ? { 'x-session-id': sessionId } : {}
+                }
             );
 
             const aiMessage = { role: 'assistant', content: response.data.response };
@@ -431,7 +434,7 @@ function ChatInterface() {
                                  text-sm text-gpt-textDim hover:text-white transition-all duration-200 group"
                     >
                         <User size={16} className="group-hover:scale-110 transition-transform" />
-                        <span>{settings.userName}</span>
+                        <span className="flex-1 text-left truncate">{userEmail || settings.userName}</span>
                     </button>
                     <button
                         onClick={() => {
@@ -444,6 +447,18 @@ function ChatInterface() {
                         <Settings size={16} className="group-hover:rotate-45 transition-transform duration-300" />
                         <span>Settings</span>
                     </button>
+                    {onLogout && (
+                        <button
+                            onClick={onLogout}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/20 
+                                     text-sm text-gpt-textDim hover:text-red-400 transition-all duration-200 group"
+                        >
+                            <svg className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span>Logout</span>
+                        </button>
+                    )}
                 </div>
             </motion.div>
 
