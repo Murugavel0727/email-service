@@ -107,6 +107,9 @@ async def login():
         # Create a new session
         session_id = session_manager.create_session()
         
+        # Get redirect URI from environment (for production)
+        redirect_uri = os.getenv("OAUTH_REDIRECT_URI", "http://localhost:8000/api/auth/callback")
+        
         # Create OAuth flow
         flow = Flow.from_client_secrets_file(
             "credentials.json",
@@ -114,7 +117,7 @@ async def login():
                 "https://www.googleapis.com/auth/gmail.send",
                 "https://www.googleapis.com/auth/gmail.readonly"
             ],
-            redirect_uri="http://localhost:8000/api/auth/callback"
+            redirect_uri=redirect_uri
         )
         
         auth_url, state = flow.authorization_url(
@@ -159,6 +162,9 @@ async def auth_callback(code: str, state: str):
         
         session_id = app.state.oauth_states[state]
         
+        # Get redirect URI from environment (for production)
+        redirect_uri = os.getenv("OAUTH_REDIRECT_URI", "http://localhost:8000/api/auth/callback")
+        
         # Exchange code for credentials
         flow = Flow.from_client_secrets_file(
             "credentials.json",
@@ -166,7 +172,7 @@ async def auth_callback(code: str, state: str):
                 "https://www.googleapis.com/auth/gmail.send",
                 "https://www.googleapis.com/auth/gmail.readonly"
             ],
-            redirect_uri="http://localhost:8000/api/auth/callback",
+            redirect_uri=redirect_uri,
             state=state
         )
         
