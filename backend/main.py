@@ -103,6 +103,8 @@ async def login():
     """Initiate OAuth login flow - returns auth URL for frontend to open"""
     try:
         from google_auth_oauthlib.flow import Flow
+        import json
+        import tempfile
         
         # Create a new session
         session_id = session_manager.create_session()
@@ -110,15 +112,41 @@ async def login():
         # Get redirect URI from environment (for production)
         redirect_uri = os.getenv("OAUTH_REDIRECT_URI", "http://localhost:8000/api/auth/callback")
         
-        # Create OAuth flow
-        flow = Flow.from_client_secrets_file(
-            "credentials.json",
-            scopes=[
-                "https://www.googleapis.com/auth/gmail.send",
-                "https://www.googleapis.com/auth/gmail.readonly"
-            ],
-            redirect_uri=redirect_uri
-        )
+        scopes = [
+            "https://www.googleapis.com/auth/gmail.send",
+            "https://www.googleapis.com/auth/gmail.readonly"
+        ]
+        
+        # Try to use credentials.json file first, otherwise use env vars
+        if os.path.exists("credentials.json"):
+            flow = Flow.from_client_secrets_file(
+                "credentials.json",
+                scopes=scopes,
+                redirect_uri=redirect_uri
+            )
+        else:
+            # Use environment variables for production
+            client_id = os.getenv("GMAIL_CLIENT_ID")
+            client_secret = os.getenv("GMAIL_CLIENT_SECRET")
+            
+            if not client_id or not client_secret:
+                raise Exception("Missing GMAIL_CLIENT_ID or GMAIL_CLIENT_SECRET environment variables")
+            
+            client_config = {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [redirect_uri]
+                }
+            }
+            flow = Flow.from_client_config(
+                client_config,
+                scopes=scopes,
+                redirect_uri=redirect_uri
+            )
+
         
         auth_url, state = flow.authorization_url(
             access_type='offline',
@@ -165,16 +193,39 @@ async def auth_callback(code: str, state: str):
         # Get redirect URI from environment (for production)
         redirect_uri = os.getenv("OAUTH_REDIRECT_URI", "http://localhost:8000/api/auth/callback")
         
-        # Exchange code for credentials
-        flow = Flow.from_client_secrets_file(
-            "credentials.json",
-            scopes=[
-                "https://www.googleapis.com/auth/gmail.send",
-                "https://www.googleapis.com/auth/gmail.readonly"
-            ],
-            redirect_uri=redirect_uri,
-            state=state
-        )
+        scopes = [
+            "https://www.googleapis.com/auth/gmail.send",
+            "https://www.googleapis.com/auth/gmail.readonly"
+        ]
+        
+        # Try to use credentials.json file first, otherwise use env vars
+        if os.path.exists("credentials.json"):
+            flow = Flow.from_client_secrets_file(
+                "credentials.json",
+                scopes=scopes,
+                redirect_uri=redirect_uri,
+                state=state
+            )
+        else:
+            # Use environment variables for production
+            client_id = os.getenv("GMAIL_CLIENT_ID")
+            client_secret = os.getenv("GMAIL_CLIENT_SECRET")
+            
+            client_config = {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [redirect_uri]
+                }
+            }
+            flow = Flow.from_client_config(
+                client_config,
+                scopes=scopes,
+                redirect_uri=redirect_uri,
+                state=state
+            )
         
         flow.fetch_token(code=code)
         credentials = flow.credentials
